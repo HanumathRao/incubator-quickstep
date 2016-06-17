@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <iomanip>
 #include <string>
 #include <sstream>
 
@@ -74,7 +75,8 @@ std::string DecimalType::printValueToString(const TypedValue &value) const {
   DecimalLit decimal = value.getLiteral<DecimalLit>();
   std::stringstream ss;
   ss << decimal.getIntegerPart() << "."
-     << decimal.getFractionalPart();
+     << std::setfill('0') << std::setw(DecimalLit::kPrecisionWidth)
+     <<  decimal.getFractionalPart();
   return ss.str();
 }
 

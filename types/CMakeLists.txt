@@ -311,6 +311,17 @@ target_link_libraries(DatetimeType_unittest
                       quickstep_utility_MemStream)
 add_test(DatetimeType_unittest DatetimeType_unittest)
 
+add_executable(DecimalType_unittest "${CMAKE_CURRENT_SOURCE_DIR}/tests/DecimalType_unittest.cpp")
+target_link_libraries(DecimalType_unittest
+                      gtest
+                      gtest_main
+                      quickstep_types_DecimalLit
+                      quickstep_types_DecimalType
+                      quickstep_types_Type
+                      quickstep_types_TypeFactory
+                      quickstep_types_TypedValue)
+add_test(DecimalType_unittest DecimalType_unittest)
+
 add_executable(DoubleType_unittest "${CMAKE_CURRENT_SOURCE_DIR}/tests/DoubleType_unittest.cpp")
 target_link_libraries(DoubleType_unittest
                       glog
