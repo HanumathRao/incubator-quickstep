@@ -104,7 +104,7 @@ bool DecimalType::parseValueFromString(const std::string &value_string,
                             &parsed_double,
                             &read_chars);
 
-  if (matched != 1 || read_chars != value_string.length())  {
+  if (matched != 1 || read_chars != static_cast<int>(value_string.length()))  {
     return false;
   }
 

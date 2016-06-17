@@ -104,8 +104,8 @@ target_link_libraries(quickstep_types_DecimalType
                       quickstep_types_Type
                       quickstep_types_TypeID
                       quickstep_types_TypedValue
-                      quickstep_utility_Macros
-                      quickstep_utility_EqualsAnyConstant)
+                      quickstep_utility_EqualsAnyConstant
+                      quickstep_utility_Macros)
 target_link_libraries(quickstep_types_DoubleType
                       quickstep_types_NullCoercibilityCheckMacro
                       quickstep_types_NumericSuperType

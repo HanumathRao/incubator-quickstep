@@ -709,8 +709,8 @@ auto InvokeOnBothLessComparatorsForDifferentTypesIgnoreNullability(
           return functor(comp, comp_reversed);
         }
         case kLong: {
-          LessLiteralUncheckedComparator<DecimalLit, false, long, false> comp;
-          LessLiteralUncheckedComparator<long, false, DecimalLit, false> comp_reversed;
+          LessLiteralUncheckedComparator<DecimalLit, false, std::int64_t, false> comp;
+          LessLiteralUncheckedComparator<std::int64_t, false, DecimalLit, false> comp_reversed;
           return functor(comp, comp_reversed);
         }
         case kFloat: {
