@@ -277,11 +277,19 @@ struct DecimalLit {
   DecimalLit() = default;
 
   explicit DecimalLit(const int value)
-    : data_(value * kMaxFractionInt) {
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
   }
 
   explicit DecimalLit(const long value)
-    : data_(value * kMaxFractionInt) {
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  explicit DecimalLit(const float value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  explicit DecimalLit(const double value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
   }
 };
 
