@@ -262,6 +262,17 @@ struct DecimalLit {
     return static_cast<int>(getIntegerPart());
   }
 
+  inline operator long() const {
+    return static_cast<long>(getIntegerPart());
+  }
+
+  inline operator double() const {
+    return static_cast<double>(data_) / kMaxFractionInt;
+  }
+
+  inline operator float() const {
+    return static_cast<float>(data_) / kMaxFractionInt;
+  }
 };
 
 //** @} */
