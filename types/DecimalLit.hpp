@@ -258,20 +258,28 @@ struct DecimalLit {
     return *this;
   }
 
-  inline operator int() const {
+  inline explicit operator int() const {
     return static_cast<int>(getIntegerPart());
   }
 
-  inline operator long() const {
+  inline explicit operator long() const {
     return static_cast<long>(getIntegerPart());
   }
 
-  inline operator double() const {
+  inline explicit operator double() const {
     return static_cast<double>(data_) / kMaxFractionInt;
   }
 
-  inline operator float() const {
+  inline explicit operator float() const {
     return static_cast<float>(data_) / kMaxFractionInt;
+  }
+
+  explicit DecimalLit(const int value)
+    : data_(value * kMaxFractionInt) {
+  }
+
+  explicit DecimalLit(const long value)
+    : data_(value * kMaxFractionInt) {
   }
 };
 
