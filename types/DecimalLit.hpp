@@ -257,6 +257,11 @@ struct DecimalLit {
     data_ = (data_ * kMaxFractionInt) / other.data_;
     return *this;
   }
+
+  inline operator int() const {
+    return static_cast<int>(getIntegerPart());
+  }
+
 };
 
 //** @} */
