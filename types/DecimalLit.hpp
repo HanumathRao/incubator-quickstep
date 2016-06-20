@@ -274,6 +274,10 @@ struct DecimalLit {
     return static_cast<float>(data_) / kMaxFractionInt;
   }
 
+  DecimalLit()
+    : data_(0) {
+  }
+
   explicit DecimalLit(const int value)
     : data_(value * kMaxFractionInt) {
   }
