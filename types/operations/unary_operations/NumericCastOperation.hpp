@@ -255,6 +255,8 @@ class NumericCastOperation : public UnaryOperation {
         return makeUncheckedUnaryOperatorHelperForSourceNullability<FloatType>(type);
       case kDouble:
         return makeUncheckedUnaryOperatorHelperForSourceNullability<DoubleType>(type);
+      case kDecimal:
+        return makeUncheckedUnaryOperatorHelperForSourceNullability<DecimalType>(type);
       default:
         FATAL_ERROR("Unhandled type " << kTypeNames[type.getTypeID()]);
     }
@@ -285,6 +287,8 @@ class NumericCastOperation : public UnaryOperation {
         return makeUncheckedUnaryOperatorHelperForTargetNullability<SourceType, source_nullability, FloatType>();
       case kDouble:
         return makeUncheckedUnaryOperatorHelperForTargetNullability<SourceType, source_nullability, DoubleType>();
+      case kDecimal:
+        return makeUncheckedUnaryOperatorHelperForTargetNullability<SourceType, source_nullability, DecimalType>();
       default:
         FATAL_ERROR("Unhandled type " << kTypeNames[target_type_.getTypeID()]);
     }
