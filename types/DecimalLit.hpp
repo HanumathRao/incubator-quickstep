@@ -195,7 +195,9 @@ struct DecimalLit {
    * @return Negative of this.
    **/
   inline DecimalLit operator-() const {
-    return DecimalLit{-data_};
+    DecimalLit result;
+    result.data_ = -result.data_;
+    return result;
   }
 
   /**
@@ -205,7 +207,9 @@ struct DecimalLit {
    * @return Sum of this and other.
    **/
   inline DecimalLit operator+(const DecimalLit& other) const {
-    return DecimalLit{data_ + other.data_};
+    DecimalLit result;
+    result.data_ = data_ + other.data_;
+    return result;
   }
 
   /**
@@ -215,7 +219,9 @@ struct DecimalLit {
    * @return Subtraction of other from this.
    **/
   inline DecimalLit operator-(const DecimalLit& other) const {
-    return DecimalLit{data_ - other.data_};
+    DecimalLit result;
+    result.data_ = data_ - other.data_;
+    return result;
   }
 
   /**
@@ -225,7 +231,9 @@ struct DecimalLit {
    * @return Multiplication of this and other.
    **/
   inline DecimalLit operator*(const DecimalLit& other) const {
-    return DecimalLit{(data_ * other.data_) / kMaxFractionInt};
+    DecimalLit result;
+    result.data_ = (data_ * other.data_) / kMaxFractionInt;
+    return result;
   }
 
   /**
@@ -235,7 +243,9 @@ struct DecimalLit {
    * @return Division of this with other.
    **/
   inline DecimalLit operator/(const DecimalLit& other) const {
-    return DecimalLit{(data_ * kMaxFractionInt) / other.data_};
+    DecimalLit result;
+    result.data_ = (data_ * kMaxFractionInt) / other.data_;
+    return result;
   }
 
   /**
@@ -245,7 +255,9 @@ struct DecimalLit {
    * @return This modulo other.
    **/
   inline DecimalLit operator%(const DecimalLit& other) const {
-    return DecimalLit{data_ % other.data_};
+    DecimalLit result;
+    result.data_ = data_ % other.data_;
+    return result;
   }
 
   /**
