@@ -36,6 +36,40 @@ struct DecimalLit {
    **/
   typedef std::int64_t data_type;
 
+  DecimalLit() = default;
+
+  explicit DecimalLit(const int value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  explicit DecimalLit(const long value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  explicit DecimalLit(const float value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  explicit DecimalLit(const double value)
+    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
+  }
+
+  inline explicit operator int() const {
+    return static_cast<int>(getIntegerPart());
+  }
+
+  inline explicit operator long() const {
+    return static_cast<long>(getIntegerPart());
+  }
+
+  inline explicit operator float() const {
+    return static_cast<float>(data_) / kMaxFractionInt;
+  }
+
+  inline explicit operator double() const {
+    return static_cast<double>(data_) / kMaxFractionInt;
+  }
+
   /**
    * @brief Builder for DecimalLit.
    *
@@ -43,9 +77,9 @@ struct DecimalLit {
    *        the DecimalLit.
    * @return The resulting DecimalLit converted from the floating point.
    **/
-  static DecimalLit fromDouble(const double value) {
-    return DecimalLit{static_cast<data_type>(value * kMaxFractionInt)};
-  }
+  //static DecimalLit fromDouble(const double value) {
+  //  return DecimalLit{static_cast<data_type>(value * kMaxFractionInt)};
+  //}
 
   /**
    * @brief Builder for DecimalLit.
@@ -54,9 +88,9 @@ struct DecimalLit {
    *        the DecimalLit.
    * @return The resulting DecimalLit conveted from the integer number.
    **/
-  static DecimalLit fromInt(const int64_t value) {
-    return DecimalLit{static_cast<data_type>(value * kMaxFractionInt)};
-  }
+  //static DecimalLit fromInt(const int64_t value) {
+  //  return DecimalLit{static_cast<data_type>(value * kMaxFractionInt)};
+  //}
 
   data_type data_;
 
@@ -256,40 +290,6 @@ struct DecimalLit {
   inline DecimalLit& operator/=(const DecimalLit& other) {
     data_ = (data_ * kMaxFractionInt) / other.data_;
     return *this;
-  }
-
-  inline explicit operator int() const {
-    return static_cast<int>(getIntegerPart());
-  }
-
-  inline explicit operator long() const {
-    return static_cast<long>(getIntegerPart());
-  }
-
-  inline explicit operator double() const {
-    return static_cast<double>(data_) / kMaxFractionInt;
-  }
-
-  inline explicit operator float() const {
-    return static_cast<float>(data_) / kMaxFractionInt;
-  }
-
-  DecimalLit() = default;
-
-  explicit DecimalLit(const int value)
-    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
-  }
-
-  explicit DecimalLit(const long value)
-    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
-  }
-
-  explicit DecimalLit(const float value)
-    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
-  }
-
-  explicit DecimalLit(const double value)
-    : data_(static_cast<data_type>(value * kMaxFractionInt)) {
   }
 };
 

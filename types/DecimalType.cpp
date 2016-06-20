@@ -56,11 +56,11 @@ TypedValue DecimalType::coerceValue(const TypedValue &original_value,
 
   switch (original_type.getTypeID()) {
     case kInt:
-      return TypedValue(DecimalLit::fromInt(original_value.getLiteral<int>()));
+      return TypedValue(DecimalLit(original_value.getLiteral<int>()));
     case kLong:
-      return TypedValue(DecimalLit::fromInt(original_value.getLiteral<std::int64_t>()));
+      return TypedValue(DecimalLit(original_value.getLiteral<std::int64_t>()));
     case kFloat:
-      return TypedValue(DecimalLit::fromDouble(original_value.getLiteral<float>()));
+      return TypedValue(DecimalLit(original_value.getLiteral<float>()));
     case kDouble:
       return original_value;
     default:
@@ -110,7 +110,7 @@ bool DecimalType::parseValueFromString(const std::string &value_string,
     return false;
   }
 
-  *value = TypedValue(DecimalLit::fromDouble(parsed_double));
+  *value = TypedValue(DecimalLit(parsed_double));
   return true;
 }
 

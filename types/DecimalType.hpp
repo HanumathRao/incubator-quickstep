@@ -98,7 +98,7 @@ class DecimalType : public NumericSuperType<DecimalLit> {
                          const Type &original_type) const override;
 
   TypedValue makeZeroValue() const override {
-    return TypedValue(DecimalLit::fromInt(0));
+    return TypedValue(DecimalLit(0));
   }
 
  private:

@@ -86,14 +86,14 @@ struct AddFunctor<DecimalLit, DecimalLit> {
 template <typename RightArgument>
 struct AddFunctor<DecimalLit, RightArgument> {
   inline DecimalLit operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left + DecimalLit::fromDouble(static_cast<double>(right));
+    return left + DecimalLit(right);
   }
 };
 
 template <typename LeftArgument>
 struct AddFunctor<LeftArgument, DecimalLit> {
   inline DecimalLit operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) + right;
+    return DecimalLit(left) + right;
   }
 };
 
@@ -130,14 +130,14 @@ struct SubtractFunctor<DecimalLit, DecimalLit> {
 template <typename RightArgument>
 struct SubtractFunctor<DecimalLit, RightArgument> {
   inline DecimalLit operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left - DecimalLit::fromDouble(static_cast<double>(right));
+    return left - DecimalLit(right);
   }
 };
 
 template <typename LeftArgument>
 struct SubtractFunctor<LeftArgument, DecimalLit> {
   inline DecimalLit operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) - right;
+    return DecimalLit(left) - right;
   }
 };
 
@@ -174,14 +174,14 @@ struct MultiplyFunctor<DecimalLit, DecimalLit> {
 template <typename RightArgument>
 struct MultiplyFunctor<DecimalLit, RightArgument> {
   inline DecimalLit operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left * DecimalLit::fromDouble(static_cast<double>(right));
+    return left * DecimalLit(right);
   }
 };
 
 template <typename LeftArgument>
 struct MultiplyFunctor<LeftArgument, DecimalLit> {
   inline DecimalLit operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) * right;
+    return DecimalLit(left) * right;
   }
 };
 
@@ -218,14 +218,14 @@ struct DivideFunctor<DecimalLit, DecimalLit> {
 template <typename RightArgument>
 struct DivideFunctor<DecimalLit, RightArgument> {
   inline DecimalLit operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left / DecimalLit::fromDouble(static_cast<double>(right));
+    return left / DecimalLit(right);
   }
 };
 
 template <typename LeftArgument>
 struct DivideFunctor<LeftArgument, DecimalLit> {
   inline DecimalLit operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) / right;
+    return DecimalLit(left) / right;
   }
 };
 
@@ -257,14 +257,14 @@ struct FloatModuloFunctor<DecimalLit, DecimalLit> {
 template <typename RightArgument>
 struct FloatModuloFunctor<DecimalLit, RightArgument> {
   inline DecimalLit operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left % DecimalLit::fromDouble(static_cast<double>(right));
+    return left % DecimalLit(right);
   }
 };
 
 template <typename LeftArgument>
 struct FloatModuloFunctor<LeftArgument, DecimalLit> {
   inline DecimalLit operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) % right;
+    return DecimalLit(left) % right;
   }
 };
 

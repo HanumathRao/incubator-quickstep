@@ -55,14 +55,14 @@ template <> struct EqualFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct EqualFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left == DecimalLit::fromDouble(static_cast<double>(right));
+    return left == DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct EqualFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) == right;
+    return DecimalLit(left) == right;
   }
 };
 
@@ -83,14 +83,14 @@ template <> struct NotEqualFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct NotEqualFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left != DecimalLit::fromDouble(right);
+    return left != DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct NotEqualFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(left) != right;
+    return DecimalLit(left) != right;
   }
 };
 
@@ -111,14 +111,14 @@ template <> struct LessFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct LessFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left < DecimalLit::fromDouble(static_cast<double>(right));
+    return left < DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct LessFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) < right;
+    return DecimalLit(left) < right;
   }
 };
 
@@ -139,14 +139,14 @@ template <> struct LessOrEqualFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct LessOrEqualFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left <= DecimalLit::fromDouble(static_cast<double>(right));
+    return left <= DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct LessOrEqualFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) <= right;
+    return DecimalLit(left) <= right;
   }
 };
 
@@ -167,14 +167,14 @@ template <> struct GreaterFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct GreaterFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left > DecimalLit::fromDouble(static_cast<double>(right));
+    return left > DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct GreaterFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) > right;
+    return DecimalLit(left) > right;
   }
 };
 
@@ -195,14 +195,14 @@ template <> struct GreaterOrEqualFunctor<DecimalLit, DecimalLit>
 template <typename RightArgument> struct GreaterOrEqualFunctor<DecimalLit, RightArgument>
     : public std::binary_function<DecimalLit, RightArgument, bool> {
   inline bool operator() (const DecimalLit &left, const RightArgument &right) const {
-    return left >= DecimalLit::fromDouble(static_cast<double>(right));
+    return left >= DecimalLit(right);
   }
 };
 
 template <typename LeftArgument> struct GreaterOrEqualFunctor<LeftArgument, DecimalLit>
     : public std::binary_function<LeftArgument, DecimalLit, bool> {
   inline bool operator() (const LeftArgument &left, const DecimalLit &right) const {
-    return DecimalLit::fromDouble(static_cast<double>(left)) >= right;
+    return DecimalLit(left) >= right;
   }
 };
 
