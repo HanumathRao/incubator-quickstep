@@ -244,9 +244,11 @@ struct Resolver::SelectListInfo {
    */
   SelectListInfo(
       const std::vector<E::NamedExpressionPtr> &select_list_expressions_in,
-      const std::vector<bool> &has_aggregate_per_expression_in)
+      const std::vector<bool> &has_aggregate_per_expression_in,
+      const std::vector<bool> &has_window_aggregate_per_expression_in)
       : select_list_expressions(select_list_expressions_in),
         has_aggregate_per_expression(has_aggregate_per_expression_in),
+        has_window_aggregate_per_expression(has_window_aggregate_per_expression_in),
         is_referenced(select_list_expressions.size(), false) {
     for (std::vector<E::NamedExpressionPtr>::size_type idx = 0;
          idx < select_list_expressions.size();
@@ -278,6 +280,10 @@ struct Resolver::SelectListInfo {
   // Has 1:1 matching with <select_list_expressions>.
   // True if the corresponding expression has an aggregate.
   const std::vector<bool> &has_aggregate_per_expression;
+
+  // Has 1:1 matchint with <select_list_expressions>.
+  // True if the corresponding expressions has a window aggregate.
+  const std::vector<bool> &has_window_aggregate_per_expression;
 
   // Has 1:1 matching with <select_list_expressions>.
   // True if the corresponding expression is referenced by an
@@ -1045,18 +1051,21 @@ L::LogicalPtr Resolver::resolveSelect(
   // Resolve SELECT-list clause.
   std::vector<E::NamedExpressionPtr> select_list_expressions;
   std::vector<bool> has_aggregate_per_expression;
+  std::vector<bool> has_window_aggregate_per_expression;
   resolveSelectClause(select_query.selection(),
                       select_name,
                       type_hints,
                       *name_resolver,
                       &query_aggregation_info,
                       &select_list_expressions,
-                      &has_aggregate_per_expression);
+                      &has_aggregate_per_expression,
+                      &has_window_aggregate_per_expression);
   DCHECK_EQ(has_aggregate_per_expression.size(),
             select_list_expressions.size());
 
   SelectListInfo select_list_info(select_list_expressions,
-                                  has_aggregate_per_expression);
+                                  has_aggregate_per_expression,
+                                  has_window_aggregate_per_expression);
 
   // Resolve GROUP BY.
   std::vector<E::NamedExpressionPtr> group_by_expressions;
@@ -1840,7 +1849,8 @@ void Resolver::resolveSelectClause(
     const NameResolver &name_resolver,
     QueryAggregationInfo *query_aggregation_info,
     std::vector<expressions::NamedExpressionPtr> *project_expressions,
-    std::vector<bool> *has_aggregate_per_expression) {
+    std::vector<bool> *has_aggregate_per_expression,
+    std::vector<bool> *has_window_aggregate_per_expression) {
   project_expressions->clear();
   switch (parse_selection.getSelectionType()) {
     case ParseSelectionClause::kStar: {
@@ -1918,6 +1928,8 @@ void Resolver::resolveSelectClause(
         project_expressions->push_back(project_named_expression);
         has_aggregate_per_expression->push_back(
             expr_resolution_info.hasAggregate());
+        has_window_aggregate_per_expression->push_back(
+            expr_resolution_info.hasWindowAggregate());
         ++tid;
       }
       break;
@@ -2731,6 +2743,7 @@ E::ScalarPtr Resolver::resolveWindowAggregateFunction(
   else {
     E::WindowInfo resolved_window = resolveWindow(*parse_function_call.window(),
                                                   expression_resolution_info->name_resolver);
+                                                  
     window_aggregate_function =
         E::WindowAggregateFunction::Create(*window_aggregate,
                                            resolved_arguments,

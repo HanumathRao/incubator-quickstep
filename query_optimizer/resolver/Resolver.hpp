@@ -282,6 +282,9 @@ class Resolver {
    * @param has_aggregate_per_expression For each SELECT-list expression,
    *                                     indicates whether it contains
    *                                     an aggregate.
+   * @param has_window_aggregate_per_expression For each SELECT-list expression,
+   *                                            indicates whether it contains a
+   *                                            window aggregate.
    */
   void resolveSelectClause(
       const ParseSelectionClause &parse_selection,
@@ -290,7 +293,8 @@ class Resolver {
       const NameResolver &name_resolver,
       QueryAggregationInfo *query_aggregation_info,
       std::vector<expressions::NamedExpressionPtr> *project_expressions,
-      std::vector<bool> *has_aggregate_per_expression);
+      std::vector<bool> *has_aggregate_per_expression,
+      std::vector<bool> *has_window_aggregate_per_expression);
 
   /**
    * @brief Resolves FROM clause and converts it to a logical plan. If the FROM
