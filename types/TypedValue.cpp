@@ -178,10 +178,15 @@ TypedValue TypedValue::ReconstructFromProto(const serialization::TypedValue &pro
       return proto.has_double_value() ?
           TypedValue(static_cast<double>(proto.double_value())) :
           TypedValue(kDouble);
-    case serialization::Type::DECIMAL:
-      return proto.has_decimal_value() ?
-          TypedValue(DecimalLit{proto.decimal_value()}) :
-          TypedValue(kDecimal);
+    case serialization::Type::DECIMAL: {
+      if (proto.has_decimal_value()) {
+        DecimalLit result;
+        result.data_ = proto.decimal_value();
+        return TypedValue(result);
+      } else {
+        return TypedValue(kDecimal);
+      }
+    }
     case serialization::Type::DATETIME:
       if (proto.has_datetime_value()) {
         DatetimeLit datetime;
