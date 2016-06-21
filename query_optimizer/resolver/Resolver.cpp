@@ -85,6 +85,7 @@
 #include "query_optimizer/expressions/SimpleCase.hpp"
 #include "query_optimizer/expressions/SubqueryExpression.hpp"
 #include "query_optimizer/expressions/UnaryExpression.hpp"
+#include "query_optimizer/expressions/WindowAggregateFunction.hpp"
 #include "query_optimizer/logical/Aggregate.hpp"
 #include "query_optimizer/logical/CopyFrom.hpp"
 #include "query_optimizer/logical/CreateIndex.hpp"
@@ -187,9 +188,19 @@ struct Resolver::ExpressionResolutionInfo {
    */
   bool hasAggregate() const { return parse_aggregate_expression != nullptr; }
 
+  /**
+   * @return True if the expression contains a window aggregate function.
+   **/
+  bool hasWindowAggregate() const {
+    return parse_window_aggregate_expression != nullptr;
+  }
+
   const NameResolver &name_resolver;
   // Empty if aggregations are allowed.
   const std::string not_allow_aggregate_here;
+
+  // Alias expressions that wraps window aggregate functions
+  std::vector<E::AliasPtr> window_aggregate_expressions;
 
   // Can be NULL if aggregations are not allowed.
   QueryAggregationInfo *query_aggregation_info = nullptr;
@@ -197,6 +208,8 @@ struct Resolver::ExpressionResolutionInfo {
   SelectListInfo *select_list_info = nullptr;
   // The first aggregate in the expression.
   const ParseTreeNode *parse_aggregate_expression = nullptr;
+  // The first window aggregate in the expression.
+  const ParseTreeNode *parse_window_aggregate_expression = nullptr;
 };
 
 struct Resolver::QueryAggregationInfo {
@@ -207,6 +220,16 @@ struct Resolver::QueryAggregationInfo {
   const bool has_group_by;
   // Alias expressions that wraps aggregate functions.
   std::vector<E::AliasPtr> aggregate_expressions;
+};
+
+struct Resolver::WindowAggregationInfo {
+  explicit WindowAggregationInfo(E::WindowInfo window_info_in,
+                                 L::LogicalPtr logical_plan_in)
+      : window_info(window_info_in),
+        logical_plan(logical_plan_in) {}
+
+  const E::WindowInfo window_info;
+  const L::LogicalPtr logical_plan;
 };
 
 struct Resolver::SelectListInfo {
@@ -973,6 +996,49 @@ L::LogicalPtr Resolver::resolveSelect(
         logical_plan, resolvePredicate(parse_predicate, &expr_resolution_info));
   }
 
+  // Resolve WINDOW clause.
+  std::unordered_map<std::string, WindowAggregationInfo> sorted_window_table;
+  if (select_query.window_list() != nullptr) {
+    if (select_query.window_list()->size() > 1) {
+      THROW_SQL_ERROR_AT(&(*select_query.window_list()->begin()))
+        << "Currently we don't support multiple window aggregation functions";
+    }
+    
+    for (const ParseWindow &window : *select_query.window_list()) {
+      E::WindowInfo resolved_window = resolveWindow(window, *name_resolver);
+      
+      // Sort the table by (p_key, o_key)
+      std::vector<E::AttributeReferencePtr> sort_attributes(resolved_window.partition_by_attributes);
+      sort_attributes.insert(sort_attributes.end(),
+                             resolved_window.order_by_attributes.begin(),
+                             resolved_window.order_by_attributes.end());
+                      
+      std::vector<bool> sort_directions(
+          resolved_window.partition_by_attributes.size(), true);
+      sort_directions.insert(sort_directions.end(),
+                            resolved_window.order_by_directions.begin(),
+                            resolved_window.order_by_directions.end());
+                          
+      std::vector<bool> sort_nulls_first(
+          resolved_window.partition_by_attributes.size(), false);
+      sort_nulls_first.insert(sort_nulls_first.end(),
+                              resolved_window.nulls_first.begin(),
+                              resolved_window.nulls_first.end());
+                              
+      L::LogicalPtr sorted_logical_plan =
+          L::Sort::Create(logical_plan,
+                          sort_attributes,
+                          sort_directions,
+                          sort_nulls_first,
+                          -1 /* limit */);
+
+      WindowAggregationInfo window_aggregation_info(resolved_window,
+                                                    sorted_logical_plan);
+      
+      sorted_window_table.emplace(window.name()->value(), window_aggregation_info);
+    }
+  }
+
   QueryAggregationInfo query_aggregation_info(
       (select_query.group_by() != nullptr));
 
@@ -1526,6 +1592,89 @@ L::LogicalPtr Resolver::RenameOutputColumns(
   }
 
   return L::Project::Create(logical_plan, project_expressions);
+}
+
+E::WindowInfo Resolver::resolveWindow(const ParseWindow &parse_window,
+                                      const NameResolver &name_resolver) {
+  std::vector<E::AttributeReferencePtr> partition_by_attributes;
+  std::vector<E::AttributeReferencePtr> order_by_attributes;
+  std::vector<bool> order_by_directions;
+  std::vector<bool> nulls_first;
+  E::WindowFrameInfo *frame_info = nullptr;
+
+  // Resolve PARTITION BY
+  if (parse_window.partition_by_expressions() != nullptr) {
+    for (const ParseExpression &unresolved_partition_by_expression :
+         *parse_window.partition_by_expressions()) {
+      ExpressionResolutionInfo expr_resolution_info(
+          name_resolver,
+          "PARTITION BY clause" /* clause_name */,
+          nullptr /* select_list_info */);
+      E::ScalarPtr partition_by_scalar = resolveExpression(
+          unresolved_partition_by_expression,
+          nullptr,  // No Type hint.
+          &expr_resolution_info);
+
+      if (partition_by_scalar->isConstant()) {
+        THROW_SQL_ERROR_AT(&unresolved_partition_by_expression)
+            << "Constant expression not allowed in PARTITION BY";
+      }
+
+      E::AttributeReferencePtr partition_by_attribute;
+      if (!E::SomeAttributeReference::MatchesWithConditionalCast(partition_by_scalar,
+                                                                 &partition_by_attribute)) {
+        THROW_SQL_ERROR_AT(&unresolved_partition_by_expression)
+            << "Only attribute name allowed in PARTITION BY in window definition";
+      }
+
+      partition_by_attributes.push_back(partition_by_attribute);
+    }
+  }
+
+  // Resolve ORDER BY
+  if (parse_window.order_by_expressions() != nullptr) {
+    for (const ParseOrderByItem &order_by_item :
+         *parse_window.order_by_expressions()) {
+      ExpressionResolutionInfo expr_resolution_info(
+          name_resolver,
+          "ORDER BY clause" /* clause name */,
+          nullptr /* select_list_info */);
+      E::ScalarPtr order_by_scalar = resolveExpression(
+          *order_by_item.ordering_expression(),
+          nullptr,  // No Type hint.
+          &expr_resolution_info);
+          
+      if (order_by_scalar->isConstant()) {
+        THROW_SQL_ERROR_AT(&order_by_item)
+            << "Constant expression not allowed in ORDER BY";
+      }
+
+      E::AttributeReferencePtr order_by_attribute;
+      if (!E::SomeAttributeReference::MatchesWithConditionalCast(order_by_scalar,
+                                                                 &order_by_attribute)) {
+        THROW_SQL_ERROR_AT(&order_by_item)
+            << "Only attribute name allowed in ORDER BY in window definition";
+      }
+
+      order_by_attributes.push_back(order_by_attribute);
+      order_by_directions.push_back(order_by_item.is_ascending());
+      nulls_first.push_back(order_by_item.nulls_first());
+    }
+  }
+
+  // Resolve window frame
+  if (parse_window.frame_info() != nullptr) {
+    const quickstep::ParseFrameInfo *parse_frame_info = parse_window.frame_info();
+    frame_info = new E::WindowFrameInfo(parse_frame_info->is_row,
+                                     parse_frame_info->num_preceding,
+                                     parse_frame_info->num_following);
+  }
+
+  return E::WindowInfo(partition_by_attributes,
+                       order_by_attributes,
+                       order_by_directions,
+                       nulls_first,
+                       frame_info);
 }
 
 const CatalogRelation* Resolver::resolveRelationName(
@@ -2362,16 +2511,18 @@ E::ScalarPtr Resolver::resolveSimpleCaseExpression(
 
 // TODO(chasseur): For now this only handles resolving aggregate functions. In
 // the future it should be extended to resolve scalar functions as well.
+// TODO(Shixuan): This will handle resolving window aggregation function as well,
+// which could be extended to general scalar functions.
 E::ScalarPtr Resolver::resolveFunctionCall(
     const ParseFunctionCall &parse_function_call,
     ExpressionResolutionInfo *expression_resolution_info) {
-  std::string function_name = ToLower(parse_function_call.name()->value());
-
-  // TODO(Shixuan): Add support for window aggregation function.
+  // Check if it is a window function.
   if (parse_function_call.isWindow()) {
-    THROW_SQL_ERROR_AT(&parse_function_call)
-        << "Window Aggregation Function is not supported currently";
+    return resolveWindowAggregateFunction(parse_function_call,
+                                          expression_resolution_info);
   }
+
+  std::string function_name = ToLower(parse_function_call.name()->value());
 
   // First check for the special case COUNT(*).
   bool count_star = false;
@@ -2471,6 +2622,135 @@ E::ScalarPtr Resolver::resolveFunctionCall(
   return E::ToRef(aggregate_alias);
 }
 
+E::ScalarPtr Resolver::resolveWindowAggregateFunction(
+    const ParseFunctionCall &parse_function_call,
+    ExpressionResolutionInfo *expression_resolution_info) {
+  std::string function_name = ToLower(parse_function_call.name()->value());
+  
+  // First check for the special case COUNT(*).
+  bool count_star = false;
+  if (parse_function_call.star() != nullptr) {
+    if (function_name != "count") {
+      THROW_SQL_ERROR_AT(parse_function_call.star())
+          << "Only COUNT can have star (*) as an argument";
+    }
+    count_star = true;
+  }
+
+  std::vector<E::ScalarPtr> resolved_arguments;
+  const PtrList<ParseExpression> *unresolved_arguments =
+      parse_function_call.arguments();
+  // The first aggregate function in the arguments.
+  const ParseTreeNode *first_aggregate_function = nullptr;
+  const ParseTreeNode *first_window_aggregate_function = nullptr;
+  if (unresolved_arguments != nullptr) {
+    for (const ParseExpression &unresolved_argument : *unresolved_arguments) {
+      ExpressionResolutionInfo expr_resolution_info(
+          *expression_resolution_info);
+      resolved_arguments.push_back(
+          resolveExpression(unresolved_argument,
+                            nullptr,  // No Type hint.
+                            &expr_resolution_info));
+                            
+      // We don't allow aggregate or window aggregate nested in a window
+      // aggregate function
+      if (expr_resolution_info.hasAggregate() &&
+          first_aggregate_function == nullptr) {
+        first_aggregate_function =
+            expr_resolution_info.parse_aggregate_expression;
+      }
+
+      if (expr_resolution_info.hasWindowAggregate() &&
+          first_window_aggregate_function == nullptr) {
+        first_window_aggregate_function =
+            expr_resolution_info.parse_window_aggregate_expression;
+      }
+    }
+  }
+
+  if (count_star && !resolved_arguments.empty()) {
+    THROW_SQL_ERROR_AT(&parse_function_call)
+        << "COUNT aggregate has both star (*) and non-star arguments.";
+  }
+
+  // Try to look up the AggregateFunction by name using
+  // AggregateFunctionFactory.
+  const ::quickstep::AggregateFunction *window_aggregate
+      = AggregateFunctionFactory::GetByName(function_name);
+  if (window_aggregate == nullptr) {
+    THROW_SQL_ERROR_AT(&parse_function_call)
+        << "Unrecognized function name \""
+        << parse_function_call.name()->value()
+        << "\"";
+  }
+
+  // Make sure aggregates are allowed in this context.
+  if (first_aggregate_function != nullptr) {
+    THROW_SQL_ERROR_AT(first_aggregate_function)
+        << "Window Aggregation of Aggregates are not allowed";
+  }
+
+  // TODO(Shixuan): We currently don't support nested window aggregation since
+  // TPC-DS doesn't have that. However, it is essentially a nested scalar
+  // function, which should be supported in the future version of Quickstep.
+  if (first_window_aggregate_function != nullptr) {
+    THROW_SQL_ERROR_AT(first_window_aggregate_function)
+        << "Window Aggregation of Window Aggregates are not allowed";
+  }
+
+  // Make sure a naked COUNT() with no arguments wasn't specified.
+  if ((window_aggregate->getAggregationID() == AggregationID::kCount)
+      && (resolved_arguments.empty())
+      && (!count_star)) {
+    THROW_SQL_ERROR_AT(&parse_function_call)
+        << "COUNT aggregate requires an argument (either scalar or star (*))";
+  }
+
+  // Resolve each of the Scalar arguments to the aggregate.
+  std::vector<const Type*> argument_types;
+  for (const E::ScalarPtr &argument : resolved_arguments) {
+    argument_types.emplace_back(&argument->getValueType());
+  }
+
+  // Make sure that the aggregate can apply to the specified argument(s).
+  if (!window_aggregate->canApplyToTypes(argument_types)) {
+    THROW_SQL_ERROR_AT(&parse_function_call)
+        << "Aggregate function " << window_aggregate->getName()
+        << " can not apply to the given argument(s).";
+  }
+
+  // A window aggregate function might be defined OVER a window name or a window.
+  E::WindowAggregateFunctionPtr window_aggregate_function;
+  if (parse_function_call.window_name() != nullptr) {
+    window_aggregate_function =
+        E::WindowAggregateFunction::Create(*window_aggregate,
+                                           resolved_arguments,
+                                           parse_function_call.window_name()->value(),
+                                           parse_function_call.is_distinct());
+  }
+  else {
+    E::WindowInfo resolved_window = resolveWindow(*parse_function_call.window(),
+                                                  expression_resolution_info->name_resolver);
+    window_aggregate_function =
+        E::WindowAggregateFunction::Create(*window_aggregate,
+                                           resolved_arguments,
+                                           &resolved_window,
+                                           parse_function_call.is_distinct());
+  }
+
+  const std::string internal_alias = GenerateAggregateAttributeAlias(
+      expression_resolution_info->query_aggregation_info->aggregate_expressions.size());
+  const E::AliasPtr aggregate_alias = E::Alias::Create(context_->nextExprId(),
+                                                       window_aggregate_function,
+                                                       "" /* attribute_name */,
+                                                       internal_alias,
+                                                       "$window_aggregate" /* relation_name */);
+                                                       
+  expression_resolution_info->window_aggregate_expressions.emplace_back(aggregate_alias);
+  expression_resolution_info->parse_window_aggregate_expression = &parse_function_call;
+  return E::ToRef(aggregate_alias);
+}
+    
 std::vector<E::PredicatePtr> Resolver::resolvePredicates(
     const PtrList<ParsePredicate> &parse_predicates,
     ExpressionResolutionInfo *expression_resolution_info) {
@@ -2792,6 +3072,10 @@ void Resolver::rewriteIfOrdinalReference(
     *expression = E::ToRef(select_list_info->select_list_expressions[position]);
     select_list_info->is_referenced[position] = true;
   }
+}
+
+std::string Resolver::GenerateWindowAggregateAttributeAlias(int index) {
+  return std::string("$window_aggregate").append(std::to_string(index));
 }
 
 std::string Resolver::GenerateAggregateAttributeAlias(int index) {
