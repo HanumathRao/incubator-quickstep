@@ -165,9 +165,11 @@ struct Resolver::ExpressionResolutionInfo {
    */
   ExpressionResolutionInfo(const NameResolver &name_resolver_in,
                            QueryAggregationInfo *query_aggregation_info_in,
+                           std::vector<E::AliasPtr> *window_aggregate_expressions_in,
                            SelectListInfo *select_list_info_in)
       : name_resolver(name_resolver_in),
         query_aggregation_info(query_aggregation_info_in),
+        window_aggregate_expressions(window_aggregate_expressions_in),
         select_list_info(select_list_info_in) {}
 
   /**
@@ -181,6 +183,7 @@ struct Resolver::ExpressionResolutionInfo {
       : name_resolver(parent.name_resolver),
         not_allow_aggregate_here(parent.not_allow_aggregate_here),
         query_aggregation_info(parent.query_aggregation_info),
+        window_aggregate_expressions(parent.window_aggregate_expressions),
         select_list_info(parent.select_list_info) {}
 
   /**
@@ -199,11 +202,12 @@ struct Resolver::ExpressionResolutionInfo {
   // Empty if aggregations are allowed.
   const std::string not_allow_aggregate_here;
 
-  // Alias expressions that wraps window aggregate functions
-  std::vector<E::AliasPtr> window_aggregate_expressions;
-
   // Can be NULL if aggregations are not allowed.
   QueryAggregationInfo *query_aggregation_info = nullptr;
+
+  // Alias expressions that wraps window aggregate functions.
+  std::vector<E::AliasPtr> *window_aggregate_expressions = nullptr;
+  
   // Can be NULL if alias references to SELECT-list expressions are not allowed.
   SelectListInfo *select_list_info = nullptr;
   // The first aggregate in the expression.
@@ -1047,6 +1051,7 @@ L::LogicalPtr Resolver::resolveSelect(
 
   QueryAggregationInfo query_aggregation_info(
       (select_query.group_by() != nullptr));
+  std::vector<E::AliasPtr> window_aggregate_expressions;
 
   // Resolve SELECT-list clause.
   std::vector<E::NamedExpressionPtr> select_list_expressions;
@@ -1057,6 +1062,7 @@ L::LogicalPtr Resolver::resolveSelect(
                       type_hints,
                       *name_resolver,
                       &query_aggregation_info,
+                      &window_aggregate_expressions,
                       &select_list_expressions,
                       &has_aggregate_per_expression,
                       &has_window_aggregate_per_expression);
@@ -1114,7 +1120,7 @@ L::LogicalPtr Resolver::resolveSelect(
   E::PredicatePtr having_predicate;
   if (select_query.having() != nullptr) {
     ExpressionResolutionInfo expr_resolution_info(
-        *name_resolver, &query_aggregation_info, &select_list_info);
+        *name_resolver, &query_aggregation_info, &window_aggregate_expressions, &select_list_info);
     having_predicate = resolvePredicate(
         *select_query.having()->having_predicate(), &expr_resolution_info);
   }
@@ -1128,7 +1134,7 @@ L::LogicalPtr Resolver::resolveSelect(
     for (const ParseOrderByItem &order_by_item :
          *select_query.order_by()->order_by_items()) {
       ExpressionResolutionInfo expr_resolution_info(
-          *name_resolver, &query_aggregation_info, &select_list_info);
+          *name_resolver, &query_aggregation_info, &window_aggregate_expressions, &select_list_info);
       E::ScalarPtr order_by_scalar = resolveExpression(
           *order_by_item.ordering_expression(),
           nullptr,  // No Type hint.
@@ -1848,7 +1854,8 @@ void Resolver::resolveSelectClause(
     const std::vector<const Type*> *type_hints,
     const NameResolver &name_resolver,
     QueryAggregationInfo *query_aggregation_info,
-    std::vector<expressions::NamedExpressionPtr> *project_expressions,
+    std::vector<E::AliasPtr> *window_aggregate_expressions,
+    std::vector<E::NamedExpressionPtr> *project_expressions,
     std::vector<bool> *has_aggregate_per_expression,
     std::vector<bool> *has_window_aggregate_per_expression) {
   project_expressions->clear();
@@ -1879,6 +1886,7 @@ void Resolver::resolveSelectClause(
         ExpressionResolutionInfo expr_resolution_info(
             name_resolver,
             query_aggregation_info,
+            window_aggregate_expressions,
             nullptr /* select_list_info */);
         const E::ScalarPtr project_scalar =
             resolveExpression(*parse_project_expression,
@@ -2759,7 +2767,7 @@ E::ScalarPtr Resolver::resolveWindowAggregateFunction(
                                                        internal_alias,
                                                        "$window_aggregate" /* relation_name */);
                                                        
-  expression_resolution_info->window_aggregate_expressions.emplace_back(aggregate_alias);
+  expression_resolution_info->window_aggregate_expressions->emplace_back(aggregate_alias);
   expression_resolution_info->parse_window_aggregate_expression = &parse_function_call;
   return E::ToRef(aggregate_alias);
 }

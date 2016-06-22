@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "query_optimizer/expressions/AggregateFunction.hpp"
+#include "query_optimizer/expressions/Alias.hpp"
 #include "query_optimizer/expressions/ExprId.hpp"
 #include "query_optimizer/expressions/NamedExpression.hpp"
 #include "query_optimizer/expressions/Predicate.hpp"
@@ -278,6 +279,8 @@ class Resolver {
    * @param name_resolver NameResolver to resolve the relation/attribute names.
    * @param query_aggregation_info Passed down to each expression to collects
    *                               aggregate expressions.
+   * @param window_aggregate_expressions Passed down to each expressions to
+   *                                     collects window aggregate expressions.
    * @param project_expressions Converted SELECT-list expressions.
    * @param has_aggregate_per_expression For each SELECT-list expression,
    *                                     indicates whether it contains
@@ -292,6 +295,7 @@ class Resolver {
       const std::vector<const Type*> *type_hints,
       const NameResolver &name_resolver,
       QueryAggregationInfo *query_aggregation_info,
+      std::vector<expressions::AliasPtr> *window_aggregate_expressions,
       std::vector<expressions::NamedExpressionPtr> *project_expressions,
       std::vector<bool> *has_aggregate_per_expression,
       std::vector<bool> *has_window_aggregate_per_expression);
